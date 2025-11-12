@@ -1,7 +1,8 @@
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import ExpensesSummary from "./ExpensesSummary";
 import ExpensesList from "./ExpensesList";
 import { Expense } from "../../types";
+import { GlobalStyles } from "../../constants/styles";
 
 const DUMMY_EXPENSES: Expense[] = [
   {
@@ -46,9 +47,17 @@ export default function ExpensesOutput({
   periodName,
 }: ExpensesOutputProps) {
   return (
-    <View>
+    <View style={styles.container}>
       <ExpensesSummary expenses={DUMMY_EXPENSES} periodName={periodName} />
-      <ExpensesList expenses={DUMMY_EXPENSES}/>
+      <ExpensesList expenses={DUMMY_EXPENSES} />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 28,
+    backgroundColor: GlobalStyles.colors.primary700,
+  },
+});
