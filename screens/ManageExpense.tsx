@@ -1,13 +1,16 @@
-import { StyleSheet, TextInput, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { RootStackParamList } from "../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useContext, useLayoutEffect } from "react";
+import { useContext, useLayoutEffect, useState } from "react";
 import IconButton from "../components/UI/IconButton";
 import { GlobalStyles } from "../constants/styles";
 import { ExpensesContext } from "../store/expenses-context";
 import ExpenseForm from "../components/ManageExpense/ExpenseForm";
 import { Expense } from "../types";
+import { addExpense, deleteExpense, updateExpense } from "../util/http";
+import LoadingOverlay from "../components/UI/LoadingOverlay";
+import ErrorOverlay from "../components/UI/ErrorOverlay";
 
 type ManageExpenseNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -17,14 +20,20 @@ type ManageExpenseNavigationProp = NativeStackNavigationProp<
 type ManageExpenseRouteProps = RouteProp<RootStackParamList, "ManageExpense">;
 
 export default function ManageExpenses() {
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation<ManageExpenseNavigationProp>();
   const route = useRoute<ManageExpenseRouteProps>();
 
   const expenseId = route.params?.expenseId;
   const isEditing = !!expenseId;
 
-  const { addExpense, deleteExpense, updateExpense, expenses } =
-    useContext(ExpensesContext);
+  const {
+    addExpenseValues,
+    deleteExpenseValues,
+    updateExpenseValues,
+    expenses,
+  } = useContext(ExpensesContext);
 
   const selectedExpense = expenses.find((expense) => expense.id === expenseId);
 
@@ -34,26 +43,53 @@ export default function ManageExpenses() {
     });
   }, [navigation, isEditing]);
 
-  const handleDelete = () => {
-    if (isEditing) {
-      deleteExpense(expenseId);
+  const handleDelete = async () => {
+    setIsLoading(true);
+    try {
+      if (isEditing) {
+        deleteExpenseValues(expenseId);
+        await deleteExpense(expenseId);
+      }
+      navigation.goBack();
+    } catch (error) {
+      setError("Could not delete expense!");
+      setIsLoading(false);
     }
-    navigation.goBack();
   };
 
   const handleCancel = () => {
     navigation.goBack();
   };
 
-  const handleSubmit = (expense: Omit<Expense, "id">) => {
-    if (isEditing) {
-      updateExpense(expenseId, expense);
-    } else {
-      addExpense(expense);
+  const handleSubmit = async (expense: Omit<Expense, "id">) => {
+    setIsLoading(true);
+    try {
+      if (isEditing) {
+        updateExpenseValues(expenseId, expense);
+        await updateExpense(expenseId, expense);
+      } else {
+        const id = await addExpense(expense);
+        const fullExpense: Expense = { ...expense, id: id };
+        addExpenseValues(fullExpense);
+      }
+      navigation.goBack();
+    } catch (error) {
+      setError("Could not save data!");
+      setIsLoading(false);
     }
-
-    navigation.goBack();
   };
+
+  const handleError = () => {
+    setError("");
+  };
+
+  if (error && !isLoading) {
+    return <ErrorOverlay message={error} onConfirm={handleError} />;
+  }
+
+  if (isLoading) {
+    return <LoadingOverlay />;
+  }
 
   return (
     <View style={styles.container}>
